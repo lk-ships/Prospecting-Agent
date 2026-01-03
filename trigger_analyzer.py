@@ -6,7 +6,7 @@ from typing import List
 
 import anthropic
 
-from config import CLAUDE_MODEL, TRIGGER_TYPES
+from config import CLAUDE_MODEL, TRIGGER_PRIORITY, TRIGGER_TYPES
 from news_client import Article
 
 
@@ -14,6 +14,7 @@ from news_client import Article
 class TriggerResult:
     """Result of trigger analysis."""
     trigger_type: str
+    priority: str
     summary: str
     article_url: str
     article_date: str
@@ -117,8 +118,12 @@ Only return the JSON, no other text."""
                 else:
                     article = articles[0]  # Fallback to first article
 
+                trigger_type = trigger.get("trigger_type", "")
+                priority = TRIGGER_PRIORITY.get(trigger_type, "Medium")
+
                 results.append(TriggerResult(
-                    trigger_type=trigger.get("trigger_type", ""),
+                    trigger_type=trigger_type,
+                    priority=priority,
                     summary=trigger.get("summary", ""),
                     article_url=article.url,
                     article_date=article.published_at,

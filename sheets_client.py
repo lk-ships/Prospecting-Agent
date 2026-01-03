@@ -26,6 +26,7 @@ class SheetsClient:
         "Trigger Date",
         "Article Link",
         "Trigger Type",
+        "Priority",
     ]
 
     def __init__(self, sheet_id: str, credentials_path: str = "credentials.json"):
@@ -99,6 +100,7 @@ class SheetsClient:
         trigger_type: str,
         trigger_date: str,
         article_link: str,
+        priority: str,
     ) -> None:
         """Append a new row with trigger information.
 
@@ -109,8 +111,9 @@ class SheetsClient:
             trigger_type: Category of trigger (e.g., "M&A Activity")
             trigger_date: Date of the trigger article
             article_link: URL to the source article
+            priority: Priority level (High/Medium/Low)
         """
         self.sheet.append_row(
-            [company_name, website, trigger_summary, trigger_date, article_link, trigger_type],
+            [company_name, website, trigger_summary, trigger_date, article_link, trigger_type, priority],
             value_input_option="USER_ENTERED",
         )

@@ -116,7 +116,7 @@ def main():
                 skipped_duplicates += 1
                 continue
 
-            print(f"    + {result.trigger_type}")
+            print(f"    + [{result.priority}] {result.trigger_type}")
 
             try:
                 sheets.append_trigger(
@@ -126,6 +126,7 @@ def main():
                     trigger_type=result.trigger_type,
                     trigger_date=result.article_date,
                     article_link=result.article_url,
+                    priority=result.priority,
                 )
                 new_triggers_added += 1
                 # Add to existing set to avoid duplicates within this run
