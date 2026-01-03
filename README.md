@@ -90,3 +90,66 @@ The agent will process each company and print progress to the console. Triggers 
 
 - **NewsAPI**: Free tier allows 100 requests/day (1 per company)
 - **Claude**: Uses Haiku model, ~$0.001 per company analyzed
+
+---
+
+## Cloud Deployment (Render.com)
+
+Deploy to Render.com to trigger the agent from anywhere via a secret URL.
+
+### Step 1: Generate Environment Variables
+
+Run this locally to get your encoded credentials:
+
+```bash
+cd ~/prospecting-agent
+python3 encode_credentials.py
+```
+
+This outputs:
+- `GOOGLE_CREDENTIALS_BASE64` - Your encoded Google credentials
+- `SECRET_TOKEN` - Your private URL token (save this!)
+
+### Step 2: Push to GitHub
+
+Make sure your latest code is pushed:
+
+```bash
+git add -A && git commit -m "Add cloud deployment" && git push
+```
+
+### Step 3: Deploy on Render
+
+1. Go to https://dashboard.render.com
+2. Click **New → Web Service**
+3. Connect your GitHub repo: `lk-ships/Prospecting-Agent`
+4. Configure:
+   - **Name**: `prospecting-agent`
+   - **Runtime**: Python
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `gunicorn app:app`
+   - **Plan**: Free
+
+5. Add **Environment Variables** (from Step 1):
+   - `GOOGLE_SHEET_ID` = your sheet ID
+   - `NEWSAPI_KEY` = your NewsAPI key
+   - `ANTHROPIC_API_KEY` = your Anthropic key
+   - `GOOGLE_CREDENTIALS_BASE64` = (paste from encode script)
+   - `SECRET_TOKEN` = (paste from encode script)
+
+6. Click **Create Web Service**
+
+### Step 4: Get Your Trigger URL
+
+After deployment, your URL will be:
+```
+https://prospecting-agent.onrender.com/run/YOUR_SECRET_TOKEN
+```
+
+Bookmark this on your phone. Visit it anytime to run the agent!
+
+### Notes
+
+- **Free tier**: Render spins down after 15min of inactivity. First request takes ~30 seconds to wake up.
+- **Rate limits**: Still limited to 100 NewsAPI requests/day
+- **Results**: Check your Google Sheet for new triggers after running
