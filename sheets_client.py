@@ -2,6 +2,7 @@
 
 import os
 from dataclasses import dataclass
+from typing import List, Set, Tuple
 
 import gspread
 from google.oauth2.service_account import Credentials
@@ -9,14 +10,9 @@ from google.oauth2.service_account import Credentials
 
 @dataclass
 class Company:
-    """Represents a company row from the sheet."""
+    """Represents a company from the sheet."""
     name: str
     website: str
-    row_number: int
-    latest_trigger: str = ""
-    trigger_date: str = ""
-    article_link: str = ""
-    trigger_type: str = ""
 
 
 class SheetsClient:
@@ -26,7 +22,7 @@ class SheetsClient:
     COLUMNS = [
         "Company Name",
         "Website",
-        "Latest Trigger",
+        "Trigger Summary",
         "Trigger Date",
         "Article Link",
         "Trigger Type",
@@ -48,60 +44,73 @@ class SheetsClient:
         self.client = gspread.authorize(creds)
         self.sheet = self.client.open_by_key(sheet_id).sheet1
 
-    def read_companies(self) -> list[Company]:
-        """Read all companies from the sheet.
+    def read_companies(self) -> List[Company]:
+        """Read unique companies from the sheet.
 
         Returns:
-            List of Company objects with their data and row numbers
+            List of unique Company objects (by name)
         """
         all_values = self.sheet.get_all_values()
 
         if not all_values:
             return []
 
-        # First row is headers
-        headers = all_values[0]
+        # Track unique companies by name
+        seen_names = set()  # type: Set[str]
         companies = []
 
         for row_idx, row in enumerate(all_values[1:], start=2):  # Row 2 onwards
             if not row or not row[0].strip():  # Skip empty rows
                 continue
 
-            # Pad row to have all columns
-            while len(row) < len(self.COLUMNS):
-                row.append("")
+            name = row[0].strip()
 
+            # Skip if we've already seen this company
+            if name.lower() in seen_names:
+                continue
+
+            seen_names.add(name.lower())
             companies.append(Company(
-                name=row[0].strip(),
+                name=name,
                 website=row[1].strip() if len(row) > 1 else "",
-                row_number=row_idx,
-                latest_trigger=row[2].strip() if len(row) > 2 else "",
-                trigger_date=row[3].strip() if len(row) > 3 else "",
-                article_link=row[4].strip() if len(row) > 4 else "",
-                trigger_type=row[5].strip() if len(row) > 5 else "",
             ))
 
         return companies
 
-    def update_trigger(
+    def get_existing_triggers(self) -> Set[Tuple[str, str]]:
+        """Get set of (company_name, article_link) pairs already in sheet.
+
+        Used to avoid adding duplicate triggers.
+        """
+        all_values = self.sheet.get_all_values()
+        existing = set()  # type: Set[Tuple[str, str]]
+
+        for row in all_values[1:]:  # Skip header
+            if len(row) >= 5 and row[0].strip() and row[4].strip():
+                existing.add((row[0].strip().lower(), row[4].strip()))
+
+        return existing
+
+    def append_trigger(
         self,
-        row_number: int,
+        company_name: str,
+        website: str,
         trigger_summary: str,
         trigger_type: str,
         trigger_date: str,
         article_link: str,
     ) -> None:
-        """Update a company row with trigger information.
+        """Append a new row with trigger information.
 
         Args:
-            row_number: The 1-indexed row number to update
+            company_name: Name of the company
+            website: Company website
             trigger_summary: Summary of the trigger event
             trigger_type: Category of trigger (e.g., "M&A Activity")
             trigger_date: Date of the trigger article
             article_link: URL to the source article
         """
-        # Update columns C through F (indices 3-6 in 1-indexed)
-        self.sheet.update(
-            f"C{row_number}:F{row_number}",
-            [[trigger_summary, trigger_date, article_link, trigger_type]],
+        self.sheet.append_row(
+            [company_name, website, trigger_summary, trigger_date, article_link, trigger_type],
+            value_input_option="USER_ENTERED",
         )

@@ -3,7 +3,7 @@
 Prospecting Trigger Agent
 
 Searches for buying triggers in news articles for companies in a Google Sheet.
-Updates the sheet with trigger summaries, types, dates, and article links.
+Appends NEW ROWS for each trigger found (multiple triggers per company possible).
 
 Usage:
     python run_agent.py
@@ -67,7 +67,12 @@ def main():
     # Read companies from sheet
     print("Reading companies from Google Sheet...")
     companies = sheets.read_companies()
-    print(f"Found {len(companies)} companies\n")
+    print(f"Found {len(companies)} unique companies")
+
+    # Get existing triggers to avoid duplicates
+    print("Checking for existing triggers...")
+    existing_triggers = sheets.get_existing_triggers()
+    print(f"Found {len(existing_triggers)} existing trigger entries\n")
 
     if not companies:
         print("No companies found in the sheet. Add some companies and try again.")
@@ -75,6 +80,8 @@ def main():
 
     # Process each company
     triggers_found = 0
+    new_triggers_added = 0
+    skipped_duplicates = 0
     errors = 0
 
     for i, company in enumerate(companies, 1):
@@ -90,29 +97,42 @@ def main():
 
         print(f"  Found {len(articles)} articles, analyzing...")
 
-        # Analyze for triggers
-        result = analyzer.analyze_articles(company.name, articles)
+        # Analyze for ALL triggers
+        results = analyzer.analyze_articles(company.name, articles)
 
-        if result and result.has_trigger:
-            print(f"  TRIGGER FOUND: {result.trigger_type}")
-            print(f"  Summary: {result.summary[:80]}...")
+        if not results:
+            print("  No relevant triggers found")
+            continue
 
-            # Update the sheet
+        print(f"  Found {len(results)} trigger(s)!")
+        triggers_found += len(results)
+
+        # Add each trigger as a new row
+        for result in results:
+            # Check if this trigger already exists (by company + article URL)
+            key = (company.name.lower(), result.article_url)
+            if key in existing_triggers:
+                print(f"    - {result.trigger_type} (already exists, skipping)")
+                skipped_duplicates += 1
+                continue
+
+            print(f"    + {result.trigger_type}")
+
             try:
-                sheets.update_trigger(
-                    row_number=company.row_number,
+                sheets.append_trigger(
+                    company_name=company.name,
+                    website=company.website,
                     trigger_summary=result.summary,
                     trigger_type=result.trigger_type,
                     trigger_date=result.article_date,
                     article_link=result.article_url,
                 )
-                triggers_found += 1
-                print("  Sheet updated!")
+                new_triggers_added += 1
+                # Add to existing set to avoid duplicates within this run
+                existing_triggers.add(key)
             except Exception as e:
-                print(f"  Error updating sheet: {e}")
+                print(f"    Error adding trigger: {e}")
                 errors += 1
-        else:
-            print("  No relevant triggers found")
 
         # Small delay to be nice to APIs
         time.sleep(0.5)
@@ -122,7 +142,10 @@ def main():
     print("SUMMARY")
     print("=" * 60)
     print(f"Companies processed: {len(companies)}")
-    print(f"Triggers found: {triggers_found}")
+    print(f"Total triggers found: {triggers_found}")
+    print(f"New rows added: {new_triggers_added}")
+    if skipped_duplicates:
+        print(f"Duplicates skipped: {skipped_duplicates}")
     if errors:
         print(f"Errors: {errors}")
     print("\nDone!")

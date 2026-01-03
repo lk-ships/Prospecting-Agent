@@ -24,7 +24,7 @@ TRIGGER_TYPES = [
 ]
 
 # NewsAPI settings
-NEWS_LOOKBACK_DAYS = 180  # 6 months
+NEWS_LOOKBACK_DAYS = 30  # Free tier only allows ~30 days back
 MAX_ARTICLES_PER_COMPANY = 10
 
 # Claude settings

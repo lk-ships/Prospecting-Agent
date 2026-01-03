@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from typing import List
 
 from newsapi import NewsApiClient
 
@@ -29,7 +30,7 @@ class NewsClient:
         """
         self.client = NewsApiClient(api_key=api_key)
 
-    def search_company_news(self, company_name: str) -> list[Article]:
+    def search_company_news(self, company_name: str) -> List[Article]:
         """Search for recent news about a company.
 
         Args:
